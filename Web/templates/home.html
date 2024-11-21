@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>造影预诊预约系统一体机</title>
+    <style>
+        body {
+            background-image: url('/static/home.jpg'); /* 将 'your_background_image.jpg' 替换为你的背景图文件名 */
+            background-size: cover;
+            background-position: center;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        .button {
+            padding: 10px 20px;
+            font-size: 20px;
+            margin: 10px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        .button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <button class="button" onclick="window.location.href='/patient'">造影图像预诊入口</button>
+        <button class="button" onclick="window.location.href='/doctor'">医生预诊后台</button>
+    </div>
+</body>
+</html>

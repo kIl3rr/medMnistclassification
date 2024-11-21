@@ -1,0 +1,146 @@
+from flask import Flask, render_template, request, send_file
+import cv2
+import numpy as np
+import tensorflow as tf
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torchvision import datasets, transforms, models 
+import os
+from PIL import Image
+from flask import send_from_directory,current_app
+
+app = Flask(__name__)
+class_names = ['AbdomenCT', 'BreastMRI', 'CXR', 'ChestCT', 'Hand', 'HeadCT']
+class ConvolutionalNetwork(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.conv1 = nn.Conv2d(3, 6, 3, 1)
+        self.conv2 = nn.Conv2d(6, 16, 3, 1)
+        self.fc1 = nn.Linear(16 * 54 * 54, 120)
+        self.fc2 = nn.Linear(120, 84)
+        self.fc3 = nn.Linear(84, 20)
+        self.fc4 = nn.Linear(20, len(class_names))
+        
+    def forward(self, X):
+        X = F.relu(self.conv1(X))
+        X = F.max_pool2d(X, 2, 2)
+        X = F.relu(self.conv2(X))
+        X = F.max_pool2d(X, 2, 2)
+        X = X.view(-1, 16 * 54 * 54)
+        X = F.relu(self.fc1(X))
+        X = F.relu(self.fc2(X))
+        X = F.relu(self.fc3(X))
+        X = self.fc4(X)
+        return F.log_softmax(X, dim=1)
+
+@app.route('/')
+def home():
+    return render_template('home.html')
+
+@app.route('/doctor')
+def doctor():
+    return "<p>医生页面即将推出！</p>"
+
+@app.route('/patient')
+def index():
+    return render_template('index.html')
+
+
+@app.route('/upload', methods=['POST'])
+def upload():
+    if request.method == 'POST':
+        file = request.files['file']
+       
+        if file:
+            # 保存上传的图片
+            image_path = './uploads/tmp/' + file.filename
+            file.save(image_path)
+
+
+            model1 = tf.keras.models.load_model('../model/medical_mnist_model.keras')
+            # 现有的 TensorFlow 模型预测逻辑
+            image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+            image = cv2.resize(image, (128, 128))
+            image = image / 255.0
+            image = np.expand_dims(image, axis=-1)
+            prediction = model1.predict(np.array([image]))
+            class_index = np.argmax(prediction[0])
+            n1 = {
+                0: "腹部",
+                1: "乳房",
+                2: "肺部",
+                3: "胸部",
+                4: "手",
+                5: "头部"
+            }
+
+
+            model2 = ConvolutionalNetwork()
+            model2 = torch.load('../model/convolutional_network_full.pth')
+
+            model2.eval()
+
+            # Assuming the model and class_names are already defined and loaded as per your previous code
+
+            # Function to load an image and transform it
+            def load_image(image_path):
+                image = Image.open(image_path).convert('RGB')  # Convert to RGB in case it's not
+                transformation = transforms.Compose([
+                    transforms.Resize(224),             # resize shortest side to 224 pixels
+                    transforms.CenterCrop(224),         # crop longest side to 224 pixels at center
+                    transforms.ToTensor(),
+                    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+                ])
+                image_tensor = transformation(image).unsqueeze(0)  # Add batch dimension
+                return image_tensor
+
+            # Load and transform the image
+            
+            image_tensor = load_image(image_path)
+
+            # Move the image tensor to the same device as the model
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            image_tensor = image_tensor.to(device)
+            model2.to(device)
+
+            with torch.no_grad():
+                output = model2(image_tensor)
+                prediction = torch.argmax(output, dim=1)
+                predicted_class = class_names[prediction.item()]
+
+            n2 = {
+                "AbdomenCT": "腹部",
+                "BreastMRI": "乳房",
+                "CXR": "肺部",
+                "ChestCT": "胸部",
+                "HeadCT": "头部",
+                "Hand": "手"
+            }
+
+            if n1[class_index]==n2[predicted_class]:
+                new_path = os.path.join('./uploads/' + str(predicted_class), file.filename)
+                # Move file
+                move_file(image_path, new_path)
+
+                return render_template('result.html', image=new_path, prediction=n1[class_index])
+            else:
+                return render_template('error.html')
+                # return render_template('result.html', image=image_path, prediction=name[predicted_class])
+                
+def move_file(src, dst):
+    try:
+        os.rename(src, dst)
+        return "File moved successfully."
+    except FileNotFoundError:
+        return "Source file does not exist."
+    except OSError as e:
+        return f"Error moving file: {e}"               
+    
+@app.route('/uploads/<path:filename>')
+def uploaded_file(filename):
+    directory = os.path.join(current_app.root_path, 'uploads')  
+    return send_from_directory(directory, filename, as_attachment=True)
+
+if __name__ == '__main__':
+    app.run(debug=True)

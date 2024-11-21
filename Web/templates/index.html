@@ -1,56 +1,426 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh">
 <head>
+    <link href='/static/light-theme.min.css' rel="stylesheet">
+    <script src= '/static/growl-notification.min.js'></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Upload Image</title>
+    <title>医疗图片分类系统</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
+       body, html {
+            height: 100%;
             margin: 0;
-            padding: 0;
-            background-color: #f3f3f3;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: url('/static/home.jpg') no-repeat center center fixed; 
+            background-size: cover; /* 确保背景图片覆盖整个屏幕 */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
         }
         .container {
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #fff;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 400px;
+            background-color: rgba(255, 255, 255, 0.9); /* 增加透明度，提高可读性 */
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.3); /* 更细腻的阴影效果 */
+            backdrop-filter: blur(10px); /* 背景模糊效果 */
         }
         h1 {
-            margin-top: 0;
+            color: #343a40;
             text-align: center;
+            font-weight: normal; /* 字体粗细调整 */
         }
         form {
-            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px; /* 调整间隙 */
+        }
+        select {
+            width: 100%;
+            padding: 12px;
+            margin-top: 15px;
+            border-radius: 8px;
+            border: 1px solid #ced4da;
+            background: linear-gradient(to right, #e9eff9, #ffffff); /* 渐变背景 */
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05); /* 内部阴影 */
+        }
+        .upload-btn {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 30px; /* 圆形按钮 */
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s;
+            margin-top: 15px;
+        }
+        .upload-btn:hover {
+            background-color: #0056b3;
+            transform: translateY(-2px); /* 鼠标悬停时轻微上移 */
         }
         input[type="file"] {
             display: none;
         }
-        .upload-btn {
-            display: inline-block;
-            padding: 10px 20px;
-            background-color: #007bff;
-            color: #fff;
-            border: none;
-            border-radius: 4px;
+        label[for="file"] {
+            padding: 12px 20px;
+            background-color: #6c757d;
+            color: white;
+            border-radius: 30px; /* 圆形按钮 */
             cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s;
+            margin-bottom: 15px;
         }
-        .upload-btn:hover {
-            background-color: #0056b3;
+        label[for="file"]:hover {
+            background-color: #5a6268;
+            transform: translateY(-2px); /* 鼠标悬停时轻微上移 */
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>上传图片进行预测</h1>
-        <form action="/upload" method="post" enctype="multipart/form-data">
-            <label for="file" class="upload-btn">选择图片</label>
-            <input type="file" id="file" name="file" accept="image/*" required>
-            <button type="submit" class="upload-btn">上传</button>
+        <h1>医学图像预测</h1>
+        <!-- <form action="/res" method="post" enctype="multipart/form-data" id="form"> -->
+        <form id="form">
+            <select name="model">
+                <option value="model1">Medical MNIST Model</option>
+                <option value="model2">Convolutional Network Model</option>
+                <option value="model3">vgg16 Network Model</option>
+                <option value="model4">resnet101 Network Model</option>
+                <option value="model5">densenet121 Network Model</option>
+            </select>
+            <!-- <label for="file">选择图片</label>
+            <input type="file" id="file" name="files" accept="image/*" webkitdirectory directory multiple required> -->
+            <button type="button" class="upload-btn" onclick="s1()">清理文件夹</button>
+            <button type="button" class="upload-btn" onclick="s2()">准备数据集</button>
+            <button type="button" class="upload-btn" onclick="submitForm()">分类</button>
         </form>
+        <audio id="myAudio">
+            <source src="/static/c.mp3" type="audio/mpeg">
+            Your browser does not support the audio element.
+        </audio>
     </div>
+    <script>
+
+    function stopMusic() {
+        var audio = document.getElementById("myAudio");
+
+        // 停止播放音乐
+        audio.pause();
+        // 如果想要重新从头播放音乐，可以将当前播放时间设置为0
+        audio.currentTime = 0;
+    }    
+    
+
+    function playMusic() {
+
+        var audio = document.getElementById("myAudio");
+
+        audio.play();
+    }
+    function submitForm() {
+        var form = new FormData(document.getElementById("form"));
+
+        $.ajax({
+            type: "POST",
+            url: "/res",
+            data: form,
+            processData: false,
+            contentType: false,
+            success: function(response) {
+                
+                GrowlNotification.notify({
+                    margin: 20,
+                    width: 250,
+                    type: 'success',
+                    title: '',
+                    description: "请稍后~",
+                    image: {
+                        visible: false,
+                        customImage: ''
+                    },
+                    closeTimeout: 30000,
+                    closeWith: ['click', 'button'],
+                    animation: {
+                        open: 'slide-in',
+                        close: 'slide-out'
+                    },
+                    animationDuration: .2,
+                    position: 'top-right',
+                    showBorder: true,
+                    showButtons: false,
+                    buttons: {
+                        action: {
+                            text: 'Ok',
+                            callback: function () {
+                            }
+                        },
+                        cancel: {
+                            text: 'Cancel',
+                            callback: function () {
+                            }
+                        }
+                    },
+                    showProgress: true
+                });
+
+                pollTaskStatus(response.task_id);
+                // $('#form').empty()
+            },
+            error: function(xhr, status, error) {
+                GrowlNotification.notify({
+                    margin: 20,
+                    width: 250,
+                    type: 'error',
+                    title: 'Error',
+                    description: "任务失败",
+                    image: {
+                        visible: false,
+                        customImage: ''
+                    },
+                    closeTimeout: 2000,
+                    closeWith: ['click', 'button'],
+                    animation: {
+                        open: 'slide-in',
+                        close: 'slide-out'
+                    },
+                    animationDuration: .2,
+                    position: 'top-center',
+                    showBorder: true,
+                    showButtons: false,
+                    buttons: {
+                        action: {
+                            text: 'Ok',
+                            callback: function () {
+                            }
+                        },
+                        cancel: {
+                            text: 'Cancel',
+                            callback: function () {
+                            }
+                        }
+                    },
+                    showProgress: false
+                });
+            }
+        });
+    }
+    function s1() {
+        $.ajax({
+            type: "GET",
+            url: "/clean",
+            success: function(response) {
+                
+                GrowlNotification.notify({
+                    margin: 20,
+                    width: 250,
+                    type: 'success',
+                    title: '',
+                    description: "请稍后~",
+                    image: {
+                        visible: false,
+                        customImage: ''
+                    },
+                    closeTimeout: 2000,
+                    closeWith: ['click', 'button'],
+                    animation: {
+                        open: 'slide-in',
+                        close: 'slide-out'
+                    },
+                    animationDuration: .2,
+                    position: 'top-right',
+                    showBorder: true,
+                    showButtons: false,
+                    buttons: {
+                        action: {
+                            text: 'Ok',
+                            callback: function () {
+                            }
+                        },
+                        cancel: {
+                            text: 'Cancel',
+                            callback: function () {
+                            }
+                        }
+                    },
+                    showProgress: true
+                });
+
+                pollTaskStatus(response.task_id);
+                // $('#form').empty()
+            },
+            error: function(xhr, status, error) {
+                GrowlNotification.notify({
+                    margin: 20,
+                    width: 250,
+                    type: 'error',
+                    title: 'Error',
+                    description: "任务失败",
+                    image: {
+                        visible: false,
+                        customImage: ''
+                    },
+                    closeTimeout: 2000,
+                    closeWith: ['click', 'button'],
+                    animation: {
+                        open: 'slide-in',
+                        close: 'slide-out'
+                    },
+                    animationDuration: .2,
+                    position: 'top-center',
+                    showBorder: true,
+                    showButtons: false,
+                    buttons: {
+                        action: {
+                            text: 'Ok',
+                            callback: function () {
+                            }
+                        },
+                        cancel: {
+                            text: 'Cancel',
+                            callback: function () {
+                            }
+                        }
+                    },
+                    showProgress: false
+                });
+            }
+        });
+    }
+
+    function s2() {
+        $.ajax({
+            type: "GET",
+            url: "/pre",
+            success: function(response) {
+                
+                GrowlNotification.notify({
+                    margin: 20,
+                    width: 250,
+                    type: 'success',
+                    title: '',
+                    description: "请稍后~",
+                    image: {
+                        visible: false,
+                        customImage: ''
+                    },
+                    closeTimeout: 2000,
+                    closeWith: ['click', 'button'],
+                    animation: {
+                        open: 'slide-in',
+                        close: 'slide-out'
+                    },
+                    animationDuration: .2,
+                    position: 'top-right',
+                    showBorder: true,
+                    showButtons: false,
+                    buttons: {
+                        action: {
+                            text: 'Ok',
+                            callback: function () {
+                            }
+                        },
+                        cancel: {
+                            text: 'Cancel',
+                            callback: function () {
+                            }
+                        }
+                    },
+                    showProgress: true
+                });
+
+                pollTaskStatus(response.task_id);
+                // $('#form').empty()
+            },
+            error: function(xhr, status, error) {
+                GrowlNotification.notify({
+                    margin: 20,
+                    width: 250,
+                    type: 'error',
+                    title: 'Error',
+                    description: "任务失败",
+                    image: {
+                        visible: false,
+                        customImage: ''
+                    },
+                    closeTimeout: 2000,
+                    closeWith: ['click', 'button'],
+                    animation: {
+                        open: 'slide-in',
+                        close: 'slide-out'
+                    },
+                    animationDuration: .2,
+                    position: 'top-center',
+                    showBorder: true,
+                    showButtons: false,
+                    buttons: {
+                        action: {
+                            text: 'Ok',
+                            callback: function () {
+                            }
+                        },
+                        cancel: {
+                            text: 'Cancel',
+                            callback: function () {
+                            }
+                        }
+                    },
+                    showProgress: false
+                });
+            }
+        });
+    }
+    function pollTaskStatus(task_id) {
+        $.ajax({
+            url: '/task_status/' + task_id,
+            success: function(response) {
+                playMusic();
+                if (response.status === 'Complete') {
+                    stopMusic();
+                    GrowlNotification.notify({
+                    margin: 20,
+                    width: 250,
+                    type: 'success',
+                    title: '',
+                    description: "任务完成",
+                    image: {
+                        visible: false,
+                        customImage: ''
+                    },
+                    closeTimeout: 3000,
+                    closeWith: ['click', 'button'],
+                    animation: {
+                        open: 'slide-in',
+                        close: 'slide-out'
+                    },
+                    animationDuration: .2,
+                    position: 'top-right',
+                    showBorder: true,
+                    showButtons: false,
+                    buttons: {
+                        action: {
+                            text: 'Ok',
+                            callback: function () {
+                            }
+                        },
+                        cancel: {
+                            text: 'Cancel',
+                            callback: function () {
+                            }
+                        }
+                    },
+                    showProgress: false
+                });
+                    // $('#result').append('<p>运行时间: ' + response.running_time + '</p>');
+                } else {
+                    setTimeout(function() { pollTaskStatus(task_id); }, 3000); // 每10秒轮询一次
+                }
+            }
+        });
+    }
+    </script>
 </body>
 </html>
